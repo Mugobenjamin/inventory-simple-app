@@ -133,6 +133,25 @@ async function addProduct(event) {
   await loadSummary();
 }
 
+function updateProductCard(product) {
+  const card = document.querySelector(`.product-card[data-id="${product.id}"]`);
+  if (!card) return;
+
+  const stockBoxes = card.querySelectorAll('.stock-grid .stock-box strong');
+  if (stockBoxes.length >= 3) {
+    stockBoxes[0].textContent = product.total_stock;
+    stockBoxes[1].textContent = product.retail_intake;
+    stockBoxes[2].textContent = product.wholesale_intake;
+  }
+
+  // Updated date
+  const updatedAreas = card.querySelectorAll('.stock-grid');
+  if (updatedAreas.length >= 2) {
+    const updatedStrong = updatedAreas[1].querySelectorAll('strong')[2];
+    if (updatedStrong) updatedStrong.textContent = new Date(product.updated_at).toLocaleDateString();
+  }
+}
+
 async function handleAdjustment(event) {
   const button = event.target.closest('[data-action="adjust"]');
   if (!button) return;
@@ -154,14 +173,31 @@ async function handleAdjustment(event) {
     return;
   }
 
-  await fetch(`/api/products/${productId}/adjust`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ delta, type }),
-  });
+  // disable controls on the card to avoid duplicate clicks
+  const card = button.closest('.product-card');
+  const controls = card.querySelectorAll('[data-action="adjust"], [data-action="delete"]');
+  controls.forEach(c => c.disabled = true);
 
-  await loadProducts();
-  await loadSummary();
+  try {
+    const res = await fetch(`/api/products/${productId}/adjust`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ delta, type }),
+    });
+
+    const data = await res.json();
+    if (!res.ok) {
+      alert(data.error || 'Adjustment failed');
+    } else {
+      // update only the changed product card and refresh summary
+      updateProductCard(data.product);
+      await loadSummary();
+    }
+  } catch (err) {
+    alert('Network error');
+  } finally {
+    controls.forEach(c => c.disabled = false);
+  }
 }
 
 async function handleDelete(event) {

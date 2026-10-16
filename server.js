@@ -232,46 +232,55 @@ app.post('/api/products/:id/adjust', (req, res) => {
     return res.status(400).json({ error: 'A valid quantity is required.' });
   }
 
-  const product = db.prepare('SELECT * FROM products WHERE id = ?').get(productId);
-  if (!product) {
+  const before = db.prepare('SELECT * FROM products WHERE id = ?').get(productId);
+  if (!before) {
     return res.status(404).json({ error: 'Product not found.' });
   }
 
-  // We'll compute the actual applied change for intake types so total_stock stays consistent.
-  const currentTotal = Number(product.total_stock);
-  let updatedTotal = currentTotal;
-  let updatedRetail = Number(product.retail_intake);
-  let updatedWholesale = Number(product.wholesale_intake);
+  // Use a transaction to compute and apply the update atomically, returning the applied delta
+  const trx = db.transaction((id, change, type) => {
+    const product = db.prepare('SELECT * FROM products WHERE id = ?').get(id);
+    let currentTotal = Number(product.total_stock);
+    let updatedTotal = currentTotal;
+    let updatedRetail = Number(product.retail_intake);
+    let updatedWholesale = Number(product.wholesale_intake);
+    let applied = 0;
 
-  if (type === 'retail') {
-    const old = updatedRetail;
-    let next = old + change;
-    if (next < 0) next = 0;
-    const applied = next - old; // actual delta applied
-    updatedRetail = next;
-    updatedTotal = Math.max(0, currentTotal + applied);
-  } else if (type === 'wholesale') {
-    const old = updatedWholesale;
-    let next = old + change;
-    if (next < 0) next = 0;
-    const applied = next - old;
-    updatedWholesale = next;
-    updatedTotal = Math.max(0, currentTotal + applied);
-  } else {
-    // total adjustment only
-    updatedTotal = Math.max(0, currentTotal + change);
-  }
+    if (type === 'retail') {
+      const old = updatedRetail;
+      let next = old + change;
+      if (next < 0) next = 0;
+      applied = next - old;
+      updatedRetail = next;
+      updatedTotal = Math.max(0, currentTotal + applied);
+    } else if (type === 'wholesale') {
+      const old = updatedWholesale;
+      let next = old + change;
+      if (next < 0) next = 0;
+      applied = next - old;
+      updatedWholesale = next;
+      updatedTotal = Math.max(0, currentTotal + applied);
+    } else {
+      const next = Math.max(0, currentTotal + change);
+      applied = next - currentTotal;
+      updatedTotal = next;
+    }
 
-  const stmt = db.prepare(`
-    UPDATE products
-    SET total_stock = ?, retail_intake = ?, wholesale_intake = ?, updated_at = CURRENT_TIMESTAMP
-    WHERE id = ?
-  `);
+    db.prepare(`
+      UPDATE products
+      SET total_stock = ?, retail_intake = ?, wholesale_intake = ?, updated_at = CURRENT_TIMESTAMP
+      WHERE id = ?
+    `).run(updatedTotal, updatedRetail, updatedWholesale, id);
 
-  stmt.run(updatedTotal, updatedRetail, updatedWholesale, productId);
+    return applied;
+  });
 
+  const applied = trx(productId, change, type);
   const fresh = db.prepare('SELECT * FROM products WHERE id = ?').get(productId);
-  res.json(formatProduct(fresh));
+
+  console.log(`[ADJUST] id=${productId} type=${type} requested=${change} applied=${applied} before_total=${before.total_stock} after_total=${fresh.total_stock}`);
+
+  res.json({ product: formatProduct(fresh), appliedDelta: applied });
 });
 
 app.delete('/api/products/:id', (req, res) => {
