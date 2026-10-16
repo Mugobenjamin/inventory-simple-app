@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Create Account — Inventory Manager</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div class="auth-shell">
+      <main class="auth-card">
+        <h1>Create account</h1>
+        <p class="muted">Create a new account to access the inventory dashboard.</p>
+
+        <form id="registerForm">
+          <label for="name">Full name</label>
+          <input id="name" name="name" required />
+
+          <label for="email">Email</label>
+          <input id="email" name="email" type="email" required />
+
+          <label for="password">Password</label>
+          <input id="password" name="password" type="password" required />
+
+          <button class="primary-btn" type="submit">Create account</button>
+        </form>
+
+        <p class="muted">Already have an account? <a href="/login">Sign in</a></p>
+      </main>
+    </div>
+
+    <script src="auth.js"></script>
+    <script>
+      const form = document.getElementById('registerForm');
+      form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const name = document.getElementById('name').value.trim();
+        const email = document.getElementById('email').value.trim();
+        const password = document.getElementById('password').value;
+        try {
+          const res = await fetch('/api/register', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name, email, password }) });
+          const data = await res.json();
+          if (!res.ok) return alert(data.error || 'Registration failed');
+          localStorage.setItem('token', data.token);
+          window.location.href = '/dashboard';
+        } catch (err) {
+          alert('Network error');
+        }
+      });
+    </script>
+  </body>
+</html>

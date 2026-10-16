@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Dashboard — Inventory Manager</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <header class="topbar">
+        <div>
+          <p class="eyebrow">Dashboard</p>
+          <h1 id="welcome">Inventory Dashboard</h1>
+        </div>
+        <div class="summary" id="summary"></div>
+      </header>
+
+      <main class="layout">
+        <section class="panel">
+          <h2>Quick actions</h2>
+          <div style="display:flex;gap:8px;flex-wrap:wrap">
+            <a href="/" class="action-btn">Open Inventory</a>
+            <button id="logoutBtn" class="action-btn danger">Sign out</button>
+          </div>
+        </section>
+
+        <section class="panel wide-panel">
+          <div class="section-head">
+            <h2>Recent products</h2>
+          </div>
+          <div id="productList" class="product-list"></div>
+        </section>
+      </main>
+    </div>
+
+    <script src="auth.js"></script>
+    <script>
+      async function loadDashboard() {
+        const token = localStorage.getItem('token');
+        if (!token) return window.location.href = '/login';
+
+        const res = await fetch('/api/dashboard-data', { headers: { 'Authorization': 'Bearer ' + token } });
+        const data = await res.json();
+        if (!res.ok) {
+          localStorage.removeItem('token');
+          return window.location.href = '/login';
+        }
+
+        document.getElementById('welcome').textContent = `Welcome, ${data.user.name}`;
+        document.getElementById('productList').innerHTML = data.products.length ? data.products.map(p => `
+          <article class="product-card">
+            <div class="product-header">
+              <div>
+                <h3>${escapeHtml(p.name)}</h3>
+                <span class="product-code">SKU: ${escapeHtml(p.sku||'—')}</span>
+              </div>
+            </div>
+
+            <div class="stock-grid">
+              <div class="stock-box"><small>Total stock</small><strong>${p.total_stock}</strong></div>
+              <div class="stock-box"><small>Retail intake</small><strong>${p.retail_intake}</strong></div>
+              <div class="stock-box"><small>Wholesale intake</small><strong>${p.wholesale_intake}</strong></div>
+            </div>
+          </article>
+        `).join('') : '<div class="empty-state">No products yet.</div>';
+
+        document.getElementById('summary').innerHTML = `
+          <div class="summary-box"><small>Products</small><strong>${data.summary.products}</strong></div>
+          <div class="summary-box"><small>Total stock</small><strong>${data.summary.total_stock}</strong></div>
+          <div class="summary-box"><small>Retail intake</small><strong>${data.summary.retail_intake}</strong></div>
+          <div class="summary-box"><small>Wholesale intake</small><strong>${data.summary.wholesale_intake}</strong></div>
+        `;
+      }
+
+      document.getElementById('logoutBtn').addEventListener('click', async () => {
+        const token = localStorage.getItem('token');
+        if (!token) return window.location.href = '/login';
+        await fetch('/api/logout', { method: 'POST', headers: { 'Authorization': 'Bearer ' + token } });
+        localStorage.removeItem('token');
+        window.location.href = '/login';
+      });
+
+      loadDashboard();
+    </script>
+  </body>
+</html>
