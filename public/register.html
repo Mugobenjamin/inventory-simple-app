@@ -8,24 +8,27 @@
   </head>
   <body>
     <div class="auth-shell">
-      <main class="auth-card">
-        <h1>Create account</h1>
-        <p class="muted">Create a new account to access the inventory dashboard.</p>
+      <main class="auth-card" role="main">
+        <div class="auth-header">
+          <div class="logo">Inventory<span class="logo-accent">+</span></div>
+          <h1>Create account</h1>
+          <p class="muted">Create a new account to access the inventory dashboard.</p>
+        </div>
 
-        <form id="registerForm">
+        <form id="registerForm" class="auth-form">
           <label for="name">Full name</label>
-          <input id="name" name="name" required />
+          <input id="name" name="name" required autocomplete="name" />
 
           <label for="email">Email</label>
-          <input id="email" name="email" type="email" required />
+          <input id="email" name="email" type="email" required autocomplete="email" />
 
           <label for="password">Password</label>
-          <input id="password" name="password" type="password" required />
+          <input id="password" name="password" type="password" required autocomplete="new-password" />
 
           <button class="primary-btn" type="submit">Create account</button>
         </form>
 
-        <p class="muted">Already have an account? <a href="/login">Sign in</a></p>
+        <p class="muted foot-note">Already have an account? <a href="/login">Sign in</a></p>
       </main>
     </div>
 

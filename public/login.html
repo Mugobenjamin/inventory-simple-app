@@ -8,21 +8,24 @@
   </head>
   <body>
     <div class="auth-shell">
-      <main class="auth-card">
-        <h1>Sign in</h1>
-        <p class="muted">Enter your email and password to access the dashboard.</p>
+      <main class="auth-card" role="main">
+        <div class="auth-header">
+          <div class="logo">Inventory<span class="logo-accent">+</span></div>
+          <h1>Sign in</h1>
+          <p class="muted">Enter your email and password to access the dashboard.</p>
+        </div>
 
-        <form id="loginForm">
+        <form id="loginForm" class="auth-form">
           <label for="email">Email</label>
-          <input id="email" name="email" type="email" required />
+          <input id="email" name="email" type="email" required autocomplete="email" />
 
           <label for="password">Password</label>
-          <input id="password" name="password" type="password" required />
+          <input id="password" name="password" type="password" required autocomplete="current-password" />
 
           <button class="primary-btn" type="submit">Sign in</button>
         </form>
 
-        <p class="muted">Don't have an account? <a href="/register">Create one</a></p>
+        <p class="muted foot-note">Don't have an account? <a href="/register">Create one</a></p>
       </main>
     </div>
 
