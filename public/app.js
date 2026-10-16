@@ -139,9 +139,20 @@ async function handleAdjustment(event) {
 
   const productId = button.dataset.id;
   const type = button.dataset.type || 'total';
-  const deltaInput = document.querySelector(`[data-adjust-input="${productId}"]`);
-  const customDelta = Number(deltaInput ? deltaInput.value : button.dataset.delta || 1);
-  const delta = Number.isFinite(customDelta) ? customDelta : Number(button.dataset.delta || 1);
+
+  // Prefer an explicit data-delta on the button (used for quick +/- buttons).
+  let delta = undefined;
+  if (button.dataset.delta !== undefined) {
+    delta = Number(button.dataset.delta);
+  } else {
+    const deltaInput = document.querySelector(`[data-adjust-input="${productId}"]`);
+    delta = deltaInput ? Number(deltaInput.value || 0) : 0;
+  }
+
+  if (!Number.isFinite(delta)) {
+    alert('Invalid quantity');
+    return;
+  }
 
   await fetch(`/api/products/${productId}/adjust`, {
     method: 'POST',

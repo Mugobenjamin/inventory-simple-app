@@ -237,14 +237,29 @@ app.post('/api/products/:id/adjust', (req, res) => {
     return res.status(404).json({ error: 'Product not found.' });
   }
 
-  let updated = { ...product };
+  // We'll compute the actual applied change for intake types so total_stock stays consistent.
+  const currentTotal = Number(product.total_stock);
+  let updatedTotal = currentTotal;
+  let updatedRetail = Number(product.retail_intake);
+  let updatedWholesale = Number(product.wholesale_intake);
 
   if (type === 'retail') {
-    updated.retail_intake = Math.max(0, Number(product.retail_intake) + change);
+    const old = updatedRetail;
+    let next = old + change;
+    if (next < 0) next = 0;
+    const applied = next - old; // actual delta applied
+    updatedRetail = next;
+    updatedTotal = Math.max(0, currentTotal + applied);
   } else if (type === 'wholesale') {
-    updated.wholesale_intake = Math.max(0, Number(product.wholesale_intake) + change);
+    const old = updatedWholesale;
+    let next = old + change;
+    if (next < 0) next = 0;
+    const applied = next - old;
+    updatedWholesale = next;
+    updatedTotal = Math.max(0, currentTotal + applied);
   } else {
-    updated.total_stock = Math.max(0, Number(product.total_stock) + change);
+    // total adjustment only
+    updatedTotal = Math.max(0, currentTotal + change);
   }
 
   const stmt = db.prepare(`
@@ -253,7 +268,7 @@ app.post('/api/products/:id/adjust', (req, res) => {
     WHERE id = ?
   `);
 
-  stmt.run(updated.total_stock, updated.retail_intake, updated.wholesale_intake, productId);
+  stmt.run(updatedTotal, updatedRetail, updatedWholesale, productId);
 
   const fresh = db.prepare('SELECT * FROM products WHERE id = ?').get(productId);
   res.json(formatProduct(fresh));
